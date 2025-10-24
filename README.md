@@ -293,7 +293,9 @@ Usuario: admin
 
 Contraseña: admin
 
-Nota sobre Problemas de MongoDB: Si utilizas máquinas virtuales (como en Proxmox o VMware) y tienes problemas para iniciar MongoDB 5.0 o superior, es posible que tu CPU no soporte las instrucciones AVX/AVX2. En ese caso, se recomienda:
+## Nota sobre Problemas de MongoDB: 
+
+Si utilizas máquinas virtuales (como en Proxmox o VMware) y tienes problemas para iniciar MongoDB 5.0 o superior, es posible que tu CPU no soporte las instrucciones AVX/AVX2. En ese caso, se recomienda:
 
 Cambiar el tipo de CPU de la VM a "host" (en Proxmox).
 
