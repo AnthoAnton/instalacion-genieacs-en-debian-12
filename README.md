@@ -249,7 +249,7 @@ ExecStart=/usr/local/bin/genieacs-ui
 WantedBy=default.target
 ```
 
-## 9. Configuración de Logrotate
+## 9. Configuración de Log rotate
 
 Crea un archivo de configuración para la rotación de logs:
 
@@ -292,6 +292,49 @@ Credenciales de Acceso:
 Usuario: admin
 
 Contraseña: admin
+
+# Pasos para agregar seguridad al api (Token)
+
+ZIP: [nbi authentication](https://github.com/markabrahams/genieacs/archive/refs/heads/nbi-authentication.zip)
+
+```
+# mkdir nbi-authentication
+```
+
+```
+# cd nbi-authentication
+```
+```
+# wget https://github.com/markabrahams/genieacs/archive/refs/heads/nbi-authentication.zip
+```
+```
+# unzip genieacs-nbi-authentication.zip
+```
+```
+# cd genieacs-nbi-authentication
+```
+```
+# npm i
+```
+```
+# npm run build
+```
+```
+# cp -r /dist/*  /usr/local/lib/node_modules/genieacs/
+```
+
+```
+# node -e "console.log(\"GENIEACS_NBI_AUTHENTICATION_KEY=\" + require('crypto').randomBytes(128).toString('hex'))" \
+  >> /opt/genieacs/genieacs.env
+
+```
+
+```
+# sudo systemctl restart genieacs-nbi
+```
+```
+# sudo systemctl status genieacs-nbi
+```
 
 ## Nota sobre Problemas de MongoDB: 
 
