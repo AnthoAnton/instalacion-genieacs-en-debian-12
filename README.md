@@ -249,7 +249,7 @@ ExecStart=/usr/local/bin/genieacs-ui
 WantedBy=default.target
 ```
 
-## 9. Configuración de Log rotate
+## 9. Configuración de Logrotate
 
 Crea un archivo de configuración para la rotación de logs:
 
@@ -336,7 +336,178 @@ ZIP: [nbi authentication](https://github.com/markabrahams/genieacs/archive/refs/
 # sudo systemctl status genieacs-nbi
 ```
 
-## Nota sobre Problemas de MongoDB: 
+# Cambiar puertos y host al servidor GenieACS
+```
+# sudo nano /opt/genieacs/genieacs.env
+```
+Contenido:
+```
+GENIEACS_UI_INTERFACE=127.0.0.1
+GENIEACS_CWMP_INTERFACE=127.0.0.1
+GENIEACS_NBI_INTERFACE=127.0.0.1
+GENIEACS_FS_INTERFACE=127.0.0.1
+GENIEACS_UI_PORT=3001
+GENIEACS_CWMP_PORT=7541
+GENIEACS_NBI_PORT=7551
+GENIEACS_FS_PORT=7561
+
+```
+```
+# sudo systemctl restart genieacs-ui genieacs-cwmp genieacs-nbi genieacs-fs
+```
+
+# Configuración Nginx
+
+Instalar nginx
+
+
+```
+# sudo apt update
+# sudo apt install nginx
+# sudo systemctl status nginx
+# sudo nano /etc/nginx/sites-available/acsempresa.conf
+
+```
+Contenido:
+```
+# ----------------------------------------------------
+# 0. Redirección HTTP (Puerto 443) a HTTPS (Puerto 3001)
+# ----------------------------------------------------
+server {
+    listen 443 ssl;
+    server_name acsempresa.dominio.com;
+
+    # Usa las rutas de tus certificados
+    ssl_certificate     /etc/nginx/ssl/acsempresa.dominio.com/fullchain.crt;
+    ssl_certificate_key /etc/nginx/ssl/acsempresa.dominio.com/certificado.key;
+
+    # [Otras configuraciones SSL aquí]
+
+    location / {
+        # El puerto 443 redirige al backend de la UI en el puerto 3000 local
+        proxy_pass http://127.0.0.1:3001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Necesario para WebSockets
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+
+# ----------------------------------------------------
+# 1. Redirección HTTP (Puerto 80) a HTTPS (Puerto 3000)
+# ----------------------------------------------------
+server {
+    listen 80;
+    server_name acsempresa.dominio.com;
+
+    # Redirige todo el tráfico HTTP al puerto de la UI en HTTPS (3000)
+    location / {
+        return 301 https://$host:3000$request_uri;
+    }
+}
+
+# ----------------------------------------------------
+# 2. Interfaz de Usuario (UI) - Puerto 3000
+# URL: https://acsempresa.dominio.com:3000
+# ----------------------------------------------------
+server {
+    listen 3000 ssl;
+    server_name acsempresa.dominio.com;
+
+    ssl_certificate     /etc/nginx/ssl/acsempresa.dominio.com/fullchain.crt;
+    ssl_certificate_key /etc/nginx/ssl/acsempresa.dominio.com/certificado.key;
+
+    # Configuración de seguridad SSL recomendada
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers 'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384';
+    ssl_prefer_server_ciphers on;
+
+    location / {
+        proxy_pass http://127.0.0.1:3001; # Proxy a genieacs-ui
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Necesario para la funcionalidad de WebSockets de GenieACS UI
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+
+# ----------------------------------------------------
+# 3. CWMP, NBI y File Server (Puertos 7547, 7557, 7567)
+# ----------------------------------------------------
+# Usaremos un bloque para cada uno para mayor claridad y control.
+
+# CWMP (TR-069) - Puerto 7547
+server {
+    listen 7547 ssl;
+    server_name acsempresa.cominio.com;
+
+    ssl_certificate     /etc/nginx/ssl/acsempresa.dominio.com/fullchain.crt;
+    ssl_certificate_key /etc/nginx/ssl/acsempresa.dominio.com/certificado.key;
+
+    location / {
+        proxy_pass http://127.0.0.1:7541; # Proxy a genieacs-cwmp
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# NBI (NorthBound Interface/API) - Puerto 7557
+server {
+    listen 7557 ssl;
+    server_name acsempresa.dominio.com;
+
+    ssl_certificate     /etc/nginx/ssl/acsempresa.dominio.com/fullchain.crt;
+    ssl_certificate_key /etc/nginx/ssl/acsempresa.dominio.com/certificado.key;
+
+    location / {
+        proxy_pass http://127.0.0.1:7551; # Proxy a genieacs-nbi
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# File Server (Firmware, etc.) - Puerto 7567
+server {
+    listen 7567 ssl;
+    server_name acsempresa.dominio.com;
+
+    ssl_certificate     /etc/nginx/ssl/acsempresa.dominio.com/fullchain.crt;
+    ssl_certificate_key /etc/nginx/ssl/acsempresa.dominio.com/certificado.key;
+
+    location / {
+        proxy_pass http://127.0.0.1:7561; # Proxy a genieacs-fs
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+
+```
+
+```
+# sudo ln -s /etc/nginx/sites-available/acsempresa.conf /etc/nginx/sites-enabled/
+# sudo rm /etc/nginx/sites-enabled/default
+# sudo nginx -t
+# sudo systemctl reload nginx
+```
+
+# Nota sobre Problemas de MongoDB: 
 
 Si utilizas máquinas virtuales (como en Proxmox o VMware) y tienes problemas para iniciar MongoDB 5.0 o superior, es posible que tu CPU no soporte las instrucciones AVX/AVX2. En ese caso, se recomienda:
 
